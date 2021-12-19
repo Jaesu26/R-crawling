@@ -77,6 +77,7 @@ codes <- substr(hrefs, nchar(hrefs)-5, nchar(hrefs)); codes
 # 종목 코드가 중복되었으니 홀수 데이터만 추출하자
 stock_code <- codes[c(TRUE, FALSE)]
     
-    
+## Tip
+# class는 .을 앞에 붙이고 id는 #을 앞에 붙이면 된다 
 
 
