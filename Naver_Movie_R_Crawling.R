@@ -213,5 +213,13 @@ html %>% html_nodes("#netizen_point_graph") %>%
 ## "grp_gender" class에 있는 "graph_point" class에 남자, 여자 평점이 있다
 ## "grp_age" class 에 있는 "graph_point" class에 나이대별 네티즌 평점이 있다
 
+html %>% html_nodes("#actual_point_graph") %>% 
+    html_nodes(".grp_gender") %>% html_nodes(".graph_point") %>% 
+    html_text() ## 남자, 여자 평점
+
+html %>% html_nodes("#actual_point_graph") %>% 
+    html_nodes(".grp_age") %>% html_nodes(".graph_point") %>% 
+    html_text() 
+### 순서대로 10대, 20대, 30대, 40대, 50대 이상 네티즌 평점이다
 
 
