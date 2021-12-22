@@ -184,17 +184,13 @@ str_check <- function(char, str){
 
 
 ###### 영화 개요 크롤링 함수 ######
-get_movie_outline <- function(naver_movie_url){
-    html <- read_html(naver_movie_url, encoding = "UTF-8")
-    html <- html %>% html_node("body")
-    
+get_movie_outline <- function(html){
+
     ## 영화 개요 정보가 ("div"태그에서) "article" class에 존재한다
     ## "article" class안에 있는 "mv_info_area" class안에 있는
     ## "info_spec" class에 개요 정보가 존재 
     
-    mv_info_ <- html %>% html_nodes(".article") %>%
-        html_nodes(".mv_info_area") %>% 
-        html_nodes(".info_spec")
+    mv_info_ <- html %>% html_nodes(".mv_info_area") %>% html_nodes(".info_spec")
     
     ### 만약 "step1" class가 없다면 영화 개요도 없으니 NA를 반환
     ### 영화 개요 : 장르, 국가, 런타임, 개봉날짜
@@ -209,37 +205,40 @@ get_movie_outline <- function(naver_movie_url){
     ### 런타임은 무조건(아마도) 존재하므로 적어도 1개 이상의 노드가 존재
     mv_outline <- mv_info %>% html_text() %>% remove_escape_sequence() ## 영화 개요 정보
     
-    ### 장르, 국가, 런타임,개봉날짜 디폴트값을 NA로 설정(런타임은 혹시 모르니...) 
+    ### 장르, 국가, 런타임,개봉날짜 디폴트값을 NA로 설정(런타임은 혹시 모르니) 
     genre <- NA; country <- NA; runtime <- NA; release <- NA
     
-    ### 런타임과 개봉날짜, release_는 길이가 2인 벡터
+    ### 만약 개봉날짜가 NA가 아니면 release_가 개봉날짜이다
+    ### release_는 길이가 2인 벡터
     ## 1번째 원소는 연도만, 2번째 원소는 8자리 완전한 날짜
     release_ <- mv_info[len] %>% html_nodes("a") %>% html_attr("href") 
      
-    if(str_check(release_[1], "open") == TRUE){
+    if(str_check(release_[1], "open")){
         release <- mv_outline[len]
         runtime <- mv_outline[len-1]
     }else{
         runtime <- mv_outline[len]
     }
     
-    ### 장르, 국가, 장르는 여러개일 수 있는 임의로 1번째 인덱스에 대해서 체크
-    if(str_check(mv_1[1], "genre") == TRUE){
+    ### 장르, 국가, 장르는 여러개일 수 있으니 임의로 1번째 인덱스에 대해서 체크
+    if(str_check(mv_1[1], "genre")){
         genre <- mv_outline[1]
         mv_2 <- mv_info[2] %>% html_nodes("a") %>% html_attr("href") ## 2번째 노드
         ### 노드가 1개일 수 도 있으니 2번째 노드는 장르가 존재할 때 만든다
         
-        if(str_check(mv_2, "nation") == TRUE){
+        if(str_check(mv_2[1], "nation")){
             country <- mv_outline[2]
         }
-    }else if(str_check(mv_1, "nation")) nation <- mv_outline[1]
+    }else if(str_check(mv_1[1], "nation")) nation <- mv_outline[1]
     
     return(c(genre, country, runtime, release)) ## 길이가 4인 벡터로 반환
 }
 
-test_url <- "https://movie.naver.com/movie/bi/mi/point.naver?code=175092"
-test <- get_movie_outline(test_url)
-test ## 일단 영화 "그린북"에 대해서는 성공적으로 크롤링함
+# test_url <- "https://movie.naver.com/movie/bi/mi/point.naver?code=171539"
+# test <- get_movie_outline(test_url)
+# test
+
+## 일단 영화 "그린북"에 대해서는 성공적으로 크롤링함
 ### 예외케이스에 해당하는 영화 "먼 훗날 우리" 대해서도 성공적으로 크롤링함
 
 
@@ -261,23 +260,25 @@ test ## 일단 영화 "그린북"에 대해서는 성공적으로 크롤링함
 ### "spec1" 클래스에는 단일 정보가 아닌 장르, 국가, 런타임, 개봉날짜를 담고있어
 ### 처리하는 코드가 길었지만 "spec2", "spec3", "spec4"는 각각 하나의 정보만 담고있어 간단하다
 
-remove_other_str <- function(str){
-    len <- nchar(str)
-    other_str <- substr(str, len-2, len)
-    
-    if(is.na(str)) return(str)
-    if(other_str == "더보기" | other_str == "도움말"){
-        return(substr(str, 1, len-3))
+#### "더보기", "도움말", "참여", "명"을 제거하는 코드
+#### 영화 개요에 혹시 "참여" 또는 "명"이 들어갈 수 있기에 이를 구분해줌
+
+remove_other_str <- function(str, type){
+    if(type == "outline"){
+        clean_str <- str %>% gsub("더보기", "", .) %>%
+            gsub("도움말", "", .) %>% .[. != ""]
+        return(clean_str) 
+    }else if(type == "count"){
+        clean_str <- str %>% gsub("참여", "", .) %>%
+            gsub("명", "", .) %>% .[. != ""]
+        return(clean_str) 
+    }else{
+        return(str)
     }
-    return(str)
 }
 
-get_movie_outline2 <- function(naver_movie_url){
-    html <- read_html(naver_movie_url, encoding = "UTF-8")
-    html <- html %>% html_node("body")
-    
-    mv_info_ <- html %>% html_nodes(".article") %>%
-        html_nodes(".mv_info_area") %>% 
+get_movie_outline2 <- function(html){
+    mv_info_ <- html %>% html_nodes(".mv_info_area") %>% 
         html_nodes(".info_spec")
     
     mv_info <- mv_info_ %>% html_nodes("dd") %>% 
@@ -287,7 +288,8 @@ get_movie_outline2 <- function(naver_movie_url){
     
     for(i in 1:4){
         info_check[i] <- length(mv_info_ %>% html_nodes(paste0(".step", i))) != 0
-        mv_info[i] <- mv_info[i] %>% remove_other_str() ## "도움말" or "더보기" 제거
+        mv_info[i] <- mv_info[i] %>% remove_other_str("outline") 
+        ## "도움말" or "더보기" 제거
         
     } ## "spec_i" class가 존재하면 TURE, 아니면 FALSE
     
@@ -306,14 +308,26 @@ get_movie_outline2 <- function(naver_movie_url){
     ## 배우와 등급을 크롤링한 text를 보면 끝에 더보기 혹은 도움말이 붙은 경우가 있다
     ## 만약 text끝에 더보기 혹은 도움말이 붙어있으면 이를 제거하자
     
+    ########## 한 가지 예외 상황이 존재함 ############
+    ## 19세 영화의 경우 크롤링이 되지 않는다
+    ## 그래서 mv_outline가 (NA, NA, NA, NA)이 된다
+    ## 이런 상황일 경우 mv_outline를 (NA, NA, NA)로 바꿔주자
+    
+    if(length(mv_outline) > 3) mv_outline <- mv_outline[1:3]
     return(mv_outline) ## 감독, 배우, 등급을 담은 길이가 3인 벡터를 반환
 }
 
-test2 <- get_movie_outline2(test_url)
-test2 ## 일단 영화 "그린북"에 대해서는 성공적으로 크롤링함
+### 예외케이스 테스트 ## 영화등급이 19세인 경우 크롤링이 안됨
+url <- "https://movie.naver.com/movie/bi/mi/point.naver?code=22012"
+html <- read_html(url, encoding = "UTF-8")
+html <- html %>% html_node("body")
+test2 <- get_movie_outline2(html); test2 
+
+## 일단 영화 "그린북"에 대해서는 성공적으로 크롤링함
 ### 예외케이스에 해당하는 영화 "먼 훗날 우리" 대해서도 성공적으로 크롤링함
 
 
+################ 평점, 비율, 참가자수 ##################
 ## 영화 평점같은 숫자 정보가 "strong" 태그에 존재한다
 # html %>% html_nodes("strong") %>% html_text()
 
@@ -321,97 +335,145 @@ test2 ## 일단 영화 "그린북"에 대해서는 성공적으로 크롤링함
 ## 인덱스로 접근하는 방법의 문제점은 값이 비어있으면 순서가 달라지는 것
 ## 클래스로 접속한 후 태그로 접속하는 것이 더 안정적일 것 같다 
 
-########## is.logical(is.na(?)) ---> 함수로 만들기 ##########
-## "viewing_graph" class에 있는 "graph_percent" class에 관람가의 나이대 비율이 있다
-age_prop <- html %>% html_nodes(".viewing_graph") %>% 
-    html_nodes(".graph_percent") %>% html_text() %>% .[1:5]
 
-if(is.logical(is.na(age_prop))) age_prop <- rep(NA, 5); age_prop
+########## 평점, 비율, 참가자수를 크롤링하는 함수를 만들자 ##########
 
+get_movie_point <- function(html){
+    ## "viewing_graph" class에 있는 "graph_percent" class에 관람가의 나이대 비율이 있다
+    
+    age_prop <- html %>% html_nodes(".viewing_graph") %>% 
+        html_nodes(".graph_percent") %>% html_text() %>% .[1:5]
+    
+    ### 순서대로 10대, 20대, 30대, 40대, 50대 이상 관람가의 비율이다
+    
+    
+    ## "actual_point_tab_inner" id에 있는 "star_score" class에 관람객평점 정보가 있다
+    actual_score <- html %>% html_nodes("#actual_point_tab_inner") %>% 
+        html_node(".star_score") %>% html_text() %>% remove_escape_sequence() %>% .[1]
+    ### actual_score의 길이는 1인데 왜 .[1]을 통해 첫 번째 원소에 인덱싱했는가?
+    ### ---> 만약 actual_score가 character(0)라면 인덱싱을 통해 NA로 변환되기 때문
 
-### 순서대로 10대, 20대, 30대, 40대, 50대 이상 관람가의 비율이다
+    
+    ## "actual_point_tab_inner" id에 있는 "user_count" class에 관람객 참여수 정보가 있다
+    actual_N <- html %>% html_nodes("#actual_point_tab_inner") %>%
+        html_node(".user_count") %>% html_text() %>%
+        .[1] %>% remove_other_str("count") 
+    
+    
+    ## "grade_netizen" class에 있는 "star_score" class에 "em" 태그에 네티즌평점 정보가 있다
+    ntz_score_ <- html %>% html_nodes(".grade_netizen") %>% 
+        html_nodes(".star_score") %>% html_nodes("em") %>% 
+        html_text()
+    
+    ntz_score <- paste0(ntz_score_[1], ntz_score_[2], ntz_score_[3], ntz_score_[4])
+    if(is.na(ntz_score_[1])) ntz_score <- NA
+    
+    
+    ## "grade_netizen" class에 있는 "user_count" class에 네티즌 참여수 정보가 있다
+    ntz_N <- html %>% html_nodes(".grade_netizen") %>%
+        html_nodes(".user_count") %>% html_text() %>% 
+        .[1] %>% remove_other_str("count")
+    
+    
+    # "netizen_point_graph" id에 있는
+    ## "grp_gender" class에 있는 "graph_point" class에 남자, 여자 평점이 있다
+    ## "grp_age" class 에 있는 "graph_point" class에 나이대별 네티즌 평점이 있다
+    
+    ntz_gender <- html %>% html_nodes("#netizen_point_graph") %>% 
+        html_nodes(".grp_gender") %>% html_nodes(".graph_point") %>% 
+        html_text() %>% .[1:2] ## 남자, 여자 평점
+    
+    
+    ##################### ntz
+    ntz_age <- html %>% html_nodes("#netizen_point_graph") %>% 
+        html_nodes(".grp_age") %>% html_nodes(".graph_point") %>% 
+        html_text() %>% .[1:5]
+    
+    ### 순서대로 10대, 20대, 30대, 40대, 50대 이상 네티즌 평점이다
+    
+    # "actual_point_graph" id에 있는
+    ## "grp_gender" class에 있는 "graph_point" class에 남자, 여자 평점이 있다
+    ## "grp_age" class 에 있는 "graph_point" class에 나이대별 네티즌 평점이 있다
+    
+    actual_gender <- html %>% html_nodes("#actual_point_graph") %>% 
+        html_nodes(".grp_gender") %>% html_nodes(".graph_point") %>% 
+        html_text() %>% .[1:2]  
+   
+    
+    ## 남자, 여자 평점이다
+    
+    actual_age <- html %>% html_nodes("#actual_point_graph") %>% 
+        html_nodes(".grp_age") %>% html_nodes(".graph_point") %>% 
+        html_text() %>% .[1:5]
+    
+    ### 순서대로 10대, 20대, 30대, 40대, 50대 이상 네티즌 평점이다
+    
+    return(c(age_prop, ntz_score, ntz_N, ntz_gender, ntz_age,
+             actual_score, actual_N, actual_gender, actual_age))
+}
 
-
-## "actual_point_tab_inner" id에 있는 "star_score" class에 관람객평점 정보가 있다
-actual_score <- html %>% html_nodes("#actual_point_tab_inner") %>% 
-    html_node(".star_score") %>% html_text() %>% remove_escape_sequence()
-
-if(is.logical(is.na(actual_score))) actual_score <- NA; actual_score
-
-
-## "actual_point_tab_inner" id에 있는 "user_count" class에 관람객 참여수 정보가 있다
-actual_N <- html %>% html_nodes("#actual_point_tab_inner") %>%
-    html_node(".user_count") %>% html_text() 
-
-if(is.logical(is.na(actual_N))) actual_N <- NA; actual_N
-
-
-## "grade_netizen" class에 있는 "star_score" class에 "em" 태그에 네티즌평점 정보가 있다
-ntz_score_ <- html %>% html_nodes(".grade_netizen") %>% 
-    html_nodes(".star_score") %>% html_nodes("em") %>% 
-    html_text()
-
-if(is.logical(is.na(ntz_score_))){
-    ntz_score_ <- NA
-}else{
-    ntz_score <- paste0(ntz_scroe_[1], ntz_scroe_[2], ntz_scroe_[3], ntz_scroe_[4])
-}; ntz_score
-
-
-## "grade_netizen" class에 있는 "user_count" class에 네티즌 참여수 정보가 있다
-ntz_N <- html %>% html_nodes(".grade_netizen") %>%
-    html_nodes(".user_count") %>% html_text()
-if(is.logical(is.na(ntz_N))) ntz_N <- NA; ntz_N
-
-
-
-# "netizen_point_graph" id에 있는
-## "grp_gender" class에 있는 "graph_point" class에 남자, 여자 평점이 있다
-## "grp_age" class 에 있는 "graph_point" class에 나이대별 네티즌 평점이 있다
-
-tmp <- html %>% html_nodes("#netizen_point_graph") %>% 
-    html_nodes(".grp_gender") %>% html_nodes(".graph_point") %>% 
-    html_text() ## 남자, 여자 평점
-
-if(is.logical(is.na(tmp))) tmp <- rep(NA, 2); tmp
-
-tmp2 <- html %>% html_nodes("#netizen_point_graph") %>% 
-    html_nodes(".grp_age") %>% html_nodes(".graph_point") %>% 
-    html_text()
-
-if(is.logical(is.na(tmp2))) tmp2 <- rep(NA, 5); tmp2
-### 순서대로 10대, 20대, 30대, 40대, 50대 이상 네티즌 평점이다
-
-
-# "actual_point_graph" id에 있는
-## "grp_gender" class에 있는 "graph_point" class에 남자, 여자 평점이 있다
-## "grp_age" class 에 있는 "graph_point" class에 나이대별 네티즌 평점이 있다
-
-tmp3 <- html %>% html_nodes("#actual_point_graph") %>% 
-    html_nodes(".grp_gender") %>% html_nodes(".graph_point") %>% 
-    html_text() ## 남자, 여자 평점
-
-if(is.logical(is.na(tmp3))) tmp3 <- rep(NA, 2); tmp3
-
-tmp4 <- html %>% html_nodes("#actual_point_graph") %>% 
-    html_nodes(".grp_age") %>% html_nodes(".graph_point") %>% 
-    html_text() 
-
-if(is.logical(is.na(tmp2))) tmp4 <- rep(NA, 5); tmp4
-
-### 순서대로 10대, 20대, 30대, 40대, 50대 이상 네티즌 평점이다
-
-#### 위의 평점, 비율, 참가자수를 크롤링하는 함수를 만들자
+# test3 <- get_movie_point(test_url)
+# test3 
 
 
-# item_name <- c(title, code, genre, country, runtime,
-#                release, director, actor, view_class,
-#                audience_age_10, audience_age_20, audience_age_30,
-#                audience_age_40, audience_age_50, netizen_score,
-#                netizen_count, ntz_male, ntz_female, ntz_10,
-#                ntz_20,	ntz_30,	ntz_40,	ntz_50,	audience_score,
-#                audience_count, audience_male, audience_female, 
-#                audience_10, audience_20, audience_30, audience_40, audience_50)
+## 일단 영화 "그린북"에 대해서는 성공적으로 크롤링함
+### 예외케이스에 해당하는 영화 "먼 훗날 우리" 대해서도 성공적으로 크롤링함
+
+
+######## 위에서 만든 크롤링 함수들을 사용해 네이버 영화 정보를 크롤링하자 
+
+get_naver_movie <- function(){
+    base_url <- "https://movie.naver.com/movie/bi/mi/point.naver?code="
+    df <- get_movie_code_title()
+    codes <- unlist(df$code)
+    
+    #### 영화정보를 담을 빈 데이터프레임
+    ## columns name
+    item_name <- c("title", "code", "genre", "country", "runtime",
+                   "release", "director", "actor", "view_class",
+                   "audience_age_10", "audience_age_20", "audience_age_30",
+                   "audience_age_40", "audience_age_50", "netizen_score",
+                   "netizen_count", "ntz_male", "ntz_female", "ntz_10",
+                   "ntz_20", "ntz_30", "ntz_40", "ntz_50", "audience_score",
+                   "audience_count", "audience_male", "audience_female",
+                   "audience_10", "audience_20", "audience_30", "audience_40", "audience_50")
+    
+    ## 데이터프레임 생성
+    naver_movie <- data.frame(matrix(NA, ncol = 32, nrow = 2000, byrow = T))
+    colnames(naver_movie) <- item_name ## 열 이름 변경
+    naver_movie[,1:2] <- df ## 영화제목과 코드
+    i <- 1 ## 행 인덱스
+    
+    for(code in codes){
+        url <- paste0(base_url, code)
+        html <- read_html(url, encoding = "UTF-8")
+        html <- html %>% html_node("body") %>% html_nodes(".article")
+        ### "article" class에 필요한 32개의 정보가 담겨있다 
+        
+        naver_movie[i,3:32] <- c(get_movie_outline(html), 
+                                 get_movie_outline2(html),
+                                 get_movie_point(html))
+        
+        i <- i + 1 ## 다음 행으로 넘어간다
+    }
+    return(naver_movie)
+}
+
+
+### 네이버 영화 2000개의 32개 정보를 크롤링하는데 걸리는 시간을 측정
+start_time <- Sys.time()
+
+naver_movie_info <- get_naver_movie()
+
+end_time <- Sys.time()
+print(end_time-start_time)
+
+#### Time difference of 6.15001 mins
+## 너무 오래걸리는것 같으니 시간을 줄여보자
+
+##### 크롤링한 데이터 "movie" 라는 이름을 가진 csv파일로 저장
+link <- "C:/Users/Jaesu/github_desktop/R_Crawling/movie.csv"
+write.csv(naver_movie_info, file = link)
 
 
 
