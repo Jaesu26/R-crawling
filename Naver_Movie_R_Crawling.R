@@ -13,7 +13,8 @@
 # 링크 : https://movie.naver.com/movie/bi/mi/point.naver?code=186114
 
 
-# rvest import
+## rvest import
+# install.packages("rvest")
 library(rvest)
 
 
