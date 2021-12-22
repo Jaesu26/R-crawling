@@ -1,4 +1,4 @@
-#### 네이버 영화 정보 크롤링
+#### 네이버 영화 2000개의 정보(32개 속성) 크롤링
 
 
 # "네이버 영화"에서 영화에 관한 기본 정보와 평점을 R로 수집한다
@@ -88,8 +88,7 @@ str(df)
 
 ## \t, \n, \r을 제거해주는 함수
 remove_escape_sequence <- function(char){
-    clean_char <- char %>% gsub("\\t", "", .) %>%
-        gsub("\\n", "", .) %>% gsub("\\r", "", .) %>% .[. != ""]
+    clean_char <- char %>% gsub("\\t|\\n|\\r", "", .) %>% .[. != ""]
     return(clean_char)
 }
 
@@ -185,7 +184,6 @@ str_check <- function(char, str){
 
 ###### 영화 개요 크롤링 함수 ######
 get_movie_outline <- function(html){
-
     ## 영화 개요 정보가 ("div"태그에서) "article" class에 존재한다
     ## "article" class안에 있는 "mv_info_area" class안에 있는
     ## "info_spec" class에 개요 정보가 존재 
@@ -265,12 +263,10 @@ get_movie_outline <- function(html){
 
 remove_other_str <- function(str, type){
     if(type == "outline"){
-        clean_str <- str %>% gsub("더보기", "", .) %>%
-            gsub("도움말", "", .) %>% .[. != ""]
+        clean_str <- str %>% gsub("더보기|도움말", "", .) %>% .[. != ""]
         return(clean_str) 
     }else if(type == "count"){
-        clean_str <- str %>% gsub("참여", "", .) %>%
-            gsub("명", "", .) %>% .[. != ""]
+        clean_str <- str %>% gsub("참여|명", "", .) %>% .[. != ""]
         return(clean_str) 
     }else{
         return(str)
@@ -469,11 +465,9 @@ end_time <- Sys.time()
 print(end_time-start_time)
 
 #### Time difference of 6.15001 mins
-## 너무 오래걸리는것 같으니 시간을 줄여보자
 
 ##### 크롤링한 데이터 "movie" 라는 이름을 가진 csv파일로 저장
 link <- "C:/Users/Jaesu/github_desktop/R_Crawling/movie.csv"
-write.csv(naver_movie_info, file = link)
-
+write.csv(naver_movie_info, file = link, fileEncoding = "euc-kr")
 
 
