@@ -1,4 +1,5 @@
 #### R 크롤링 연습
+#### 참고 : https://enook.jbnu.ac.kr/contents/157/#!/p/101
 
 # install.packages("rvest")
 library(rvest)
